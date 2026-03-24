@@ -1,0 +1,51 @@
+warning: No `requires-python` value found in the workspace. Defaulting to `>=3.13`.
+Traceback (most recent call last):
+  File "C:\Users\91811\Desktop\credit_risk_assessment\.venv\Lib\site-packages\sklearn\metrics\_classification.py", line 155, in _check_targets
+    unique_values = _union1d(y_true, y_pred, xp)
+  File "C:\Users\91811\Desktop\credit_risk_assessment\.venv\Lib\site-packages\sklearn\utils\_array_api.py", line 241, in _union1d
+    return xp.asarray(numpy.union1d(a_unique, b_unique))
+                      ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\91811\Desktop\credit_risk_assessment\.venv\Lib\site-packages\numpy\lib\_arraysetops_impl.py", line 1113, in union1d
+    return unique(np.concatenate((ar1, ar2), axis=None))
+  File "C:\Users\91811\Desktop\credit_risk_assessment\.venv\Lib\site-packages\numpy\lib\_arraysetops_impl.py", line 296, in unique
+    ret = _unique1d(ar, return_index, return_inverse, return_counts,
+                    equal_nan=equal_nan, inverse_shape=ar.shape, axis=None,
+                    sorted=sorted)
+  File "C:\Users\91811\Desktop\credit_risk_assessment\.venv\Lib\site-packages\numpy\lib\_arraysetops_impl.py", line 385, in _unique1d
+    ar.sort()
+    ~~~~~~~^^
+TypeError: '<' not supported between instances of 'int' and 'str'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\91811\Desktop\credit_risk_assessment\src\main.py", line 42, in <module>
+    run_pipeline()
+    ~~~~~~~~~~~~^^
+  File "C:\Users\91811\Desktop\credit_risk_assessment\src\main.py", line 36, in run_pipeline
+    metrics = calculate_metrics(y_test, y_probs, t)
+  File "C:\Users\91811\Desktop\credit_risk_assessment\src\evaluation.py", line 9, in calculate_metrics
+    cm = confusion_matrix(y_true, y_pred)
+  File "C:\Users\91811\Desktop\credit_risk_assessment\.venv\Lib\site-packages\sklearn\utils\_param_validation.py", line 218, in wrapper
+    return func(*args, **kwargs)
+  File "C:\Users\91811\Desktop\credit_risk_assessment\.venv\Lib\site-packages\sklearn\metrics\_classification.py", line 549, in confusion_matrix
+    y_type, y_true, y_pred, sample_weight = _check_targets(
+                                            ~~~~~~~~~~~~~~^
+        y_true, y_pred, sample_weight
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\91811\Desktop\credit_risk_assessment\.venv\Lib\site-packages\sklearn\metrics\_classification.py", line 161, in _check_targets
+    raise TypeError(
+    ...<5 lines>...
+    ) from e
+TypeError: Labels in y_true and y_pred should be of the same type. Got y_true=['Bad' 'Good'] and y_pred=[0 1]. Make sure that the predictions provided by the classifier coincides with the true labels.
+Starting Credit Risk Assessment Pipeline...
+Loading data...
+Preprocessing data...
+Splitting data into train/test sets...
+Training Logistic Regression model...
+Generating prediction probabilities...
+Evaluating model performance...
