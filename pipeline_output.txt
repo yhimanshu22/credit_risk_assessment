@@ -1,51 +1,110 @@
-warning: No `requires-python` value found in the workspace. Defaulting to `>=3.13`.
-Traceback (most recent call last):
-  File "C:\Users\91811\Desktop\credit_risk_assessment\.venv\Lib\site-packages\sklearn\metrics\_classification.py", line 155, in _check_targets
-    unique_values = _union1d(y_true, y_pred, xp)
-  File "C:\Users\91811\Desktop\credit_risk_assessment\.venv\Lib\site-packages\sklearn\utils\_array_api.py", line 241, in _union1d
-    return xp.asarray(numpy.union1d(a_unique, b_unique))
-                      ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\91811\Desktop\credit_risk_assessment\.venv\Lib\site-packages\numpy\lib\_arraysetops_impl.py", line 1113, in union1d
-    return unique(np.concatenate((ar1, ar2), axis=None))
-  File "C:\Users\91811\Desktop\credit_risk_assessment\.venv\Lib\site-packages\numpy\lib\_arraysetops_impl.py", line 296, in unique
-    ret = _unique1d(ar, return_index, return_inverse, return_counts,
-                    equal_nan=equal_nan, inverse_shape=ar.shape, axis=None,
-                    sorted=sorted)
-  File "C:\Users\91811\Desktop\credit_risk_assessment\.venv\Lib\site-packages\numpy\lib\_arraysetops_impl.py", line 385, in _unique1d
-    ar.sort()
-    ~~~~~~~^^
-TypeError: '<' not supported between instances of 'int' and 'str'
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "<frozen runpy>", line 198, in _run_module_as_main
-  File "<frozen runpy>", line 88, in _run_code
-  File "C:\Users\91811\Desktop\credit_risk_assessment\src\main.py", line 42, in <module>
-    run_pipeline()
-    ~~~~~~~~~~~~^^
-  File "C:\Users\91811\Desktop\credit_risk_assessment\src\main.py", line 36, in run_pipeline
-    metrics = calculate_metrics(y_test, y_probs, t)
-  File "C:\Users\91811\Desktop\credit_risk_assessment\src\evaluation.py", line 9, in calculate_metrics
-    cm = confusion_matrix(y_true, y_pred)
-  File "C:\Users\91811\Desktop\credit_risk_assessment\.venv\Lib\site-packages\sklearn\utils\_param_validation.py", line 218, in wrapper
-    return func(*args, **kwargs)
-  File "C:\Users\91811\Desktop\credit_risk_assessment\.venv\Lib\site-packages\sklearn\metrics\_classification.py", line 549, in confusion_matrix
-    y_type, y_true, y_pred, sample_weight = _check_targets(
-                                            ~~~~~~~~~~~~~~^
-        y_true, y_pred, sample_weight
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    )
-    ^
-  File "C:\Users\91811\Desktop\credit_risk_assessment\.venv\Lib\site-packages\sklearn\metrics\_classification.py", line 161, in _check_targets
-    raise TypeError(
-    ...<5 lines>...
-    ) from e
-TypeError: Labels in y_true and y_pred should be of the same type. Got y_true=['Bad' 'Good'] and y_pred=[0 1]. Make sure that the predictions provided by the classifier coincides with the true labels.
 Starting Credit Risk Assessment Pipeline...
 Loading data...
 Preprocessing data...
 Splitting data into train/test sets...
+
+=== Logistic Regression Threshold Analysis ===
 Training Logistic Regression model...
-Generating prediction probabilities...
-Evaluating model performance...
+--- Logistic Regression | Threshold 0.2 ---
+Accuracy:  0.7233
+Precision: 0.7172
+Recall:    0.9952
+TPR:       0.9952
+FPR:       0.9011
+FNR:       0.0048
+AUC:       0.8158
+Confusion Matrix:
+[[  9  82]
+ [  1 208]]
+----------------------------------------
+--- Logistic Regression | Threshold 0.35 ---
+Accuracy:  0.7467
+Precision: 0.7509
+Recall:    0.9522
+TPR:       0.9522
+FPR:       0.7253
+FNR:       0.0478
+AUC:       0.8158
+Confusion Matrix:
+[[ 25  66]
+ [ 10 199]]
+----------------------------------------
+--- Logistic Regression | Threshold 0.5 ---
+Accuracy:  0.7733
+Precision: 0.8000
+Recall:    0.8995
+TPR:       0.8995
+FPR:       0.5165
+FNR:       0.1005
+AUC:       0.8158
+Confusion Matrix:
+[[ 44  47]
+ [ 21 188]]
+----------------------------------------
+
+=== Additional Model Training & Comparison ===
+Training Decision Tree model...
+--- Decision Tree ---
+Accuracy:  0.6900
+Precision: 0.7500
+Recall:    0.8325
+TPR:       0.8325
+FPR:       0.6374
+FNR:       0.1675
+AUC:       0.6951
+Confusion Matrix:
+[[ 33  58]
+ [ 35 174]]
+----------------------------------------
+Training Bagging model...
+--- Bagging ---
+Accuracy:  0.7500
+Precision: 0.7638
+Recall:    0.9282
+TPR:       0.9282
+FPR:       0.6593
+FNR:       0.0718
+AUC:       0.7935
+Confusion Matrix:
+[[ 31  60]
+ [ 15 194]]
+----------------------------------------
+Training Random Forest model...
+--- Random Forest ---
+Accuracy:  0.7600
+Precision: 0.7890
+Recall:    0.8947
+TPR:       0.8947
+FPR:       0.5495
+FNR:       0.1053
+AUC:       0.7878
+Confusion Matrix:
+[[ 41  50]
+ [ 22 187]]
+----------------------------------------
+Training SVM (RBF) model...
+--- SVM (RBF) ---
+Accuracy:  0.7133
+Precision: 0.7085
+Recall:    1.0000
+TPR:       1.0000
+FPR:       0.9451
+FNR:       0.0000
+AUC:       0.5255
+Confusion Matrix:
+[[  5  86]
+ [  0 209]]
+----------------------------------------
+
+=== Model Comparison ===
+Model                   Accuracy  Precision   Recall      FNR      AUC
+----------------------------------------------------------------------
+Logistic Regression (t=0.5)    0.7733     0.8000   0.8995   0.1005   0.8158
+Decision Tree             0.6900     0.7500   0.8325   0.1675   0.6951
+Bagging                   0.7500     0.7638   0.9282   0.0718   0.7935
+Random Forest             0.7600     0.7890   0.8947   0.1053   0.7878
+SVM (RBF)                 0.7133     0.7085   1.0000   0.0000   0.5255
+
+Best accuracy: Logistic Regression (0.7733)
+
+Pipeline execution complete.
