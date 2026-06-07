@@ -7,9 +7,10 @@ Binary classification pipeline that predicts whether a loan applicant is a **Goo
 | Item | Value |
 |------|-------|
 | Dataset | `data/Credit.csv` — 1,000 rows, 62 columns |
-| Features | 61 (7 numerical + 54 one-hot encoded categoricals) |
+| Features | 61 (7 numerical + 2 binary + 52 one-hot categoricals) |
 | Target | `Class` — Good (1) / Bad (0) |
-| Model | Logistic Regression |
+| Models | Logistic Regression, Decision Tree, Bagging, Random Forest, SVM (RBF) |
+| Tuning | GridSearchCV (5-fold CV) for tree-based ensemble models |
 | Split | 70% train / 30% test (`random_state=42`) |
 
 ---
@@ -43,30 +44,37 @@ flowchart TB
         SP1 --> SP2 --> SP3
     end
 
-    subgraph S4["④ Train — model.py"]
-        T1[LogisticRegression max_iter=1e8]
-        T2[model.fit X_train, y_train]
-        T1 --> T2
+    subgraph S4A["④a Logistic Regression — model.py"]
+        LR1[LogisticRegression max_iter=1e8]
+        LR2[fit on X_train]
+        LR3[predict_proba on X_test]
+        LR1 --> LR2 --> LR3
     end
 
-    subgraph S5["⑤ Predict — model.py"]
-        PR1[predict_proba X_test]
-        PR2["Output: P(Good) per sample"]
-        PR1 --> PR2
+    subgraph S4B["④b Other Models — model.py"]
+        M1[Decision Tree · Bagging · Random Forest]
+        M2[GridSearchCV · cv=5 · scoring=accuracy]
+        M3[Return best_estimator_]
+        M4[SVM RBF · probability=True]
+        M1 --> M2 --> M3
+        M4
     end
 
-    subgraph S6["⑥ Evaluate — evaluation.py"]
-        E1["For each threshold: 0.2, 0.35, 0.5"]
-        E2["y_pred = 1 if prob > threshold else 0"]
-        E3[Build confusion matrix]
-        E4[Compute Accuracy · TPR · FPR]
-        E5[Print performance summary]
-        E1 --> E2 --> E3 --> E4 --> E5
+    subgraph S5["⑤ Evaluate — evaluation.py"]
+        E1["LR: thresholds 0.2, 0.35, 0.5"]
+        E2["Others: predict + predict_proba"]
+        E3[Confusion matrix]
+        E4[Accuracy · Precision · Recall · TPR · FPR · FNR · AUC]
+        E5[Per-model summary + comparison table]
+        E1 --> E3
+        E2 --> E3
+        E3 --> E4 --> E5
     end
 
     END([Pipeline complete])
 
-    S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> END
+    S1 --> S2 --> S3 --> S4A --> S5
+    S3 --> S4B --> S5 --> END
 ```
 
 ---
@@ -78,7 +86,8 @@ flowchart LR
     subgraph Input
         CSV["Credit.csv<br/>1000 × 62"]
         NUM["Numerical (7)<br/>Duration, Amount, Age, ..."]
-        CAT["One-hot (54)<br/>CreditHistory, Purpose, Job, ..."]
+        BIN["Binary (2)<br/>Telephone, ForeignWorker"]
+        CAT["One-hot (52)<br/>CreditHistory, Purpose, Job, ..."]
         TGT["Class: Good / Bad"]
     end
 
@@ -93,13 +102,16 @@ flowchart LR
 
     subgraph Output
         PROB["Probabilities<br/>P(Good) × 300"]
-        MET["Metrics × 3 thresholds<br/>Accuracy · TPR · FPR · CM"]
+        MET["Metrics per model<br/>Accuracy · Precision · Recall · AUC · CM"]
+        CMP["Model comparison table"]
     end
 
     CSV --> NUM
+    CSV --> BIN
     CSV --> CAT
     CSV --> TGT
     NUM --> DF
+    BIN --> DF
     CAT --> DF
     TGT --> DF
     DF --> TR
@@ -107,6 +119,7 @@ flowchart LR
     TR --> PROB
     TE --> PROB
     PROB --> MET
+    MET --> CMP
 ```
 
 ---
@@ -123,26 +136,50 @@ graph TD
 
     CONFIG -.->|paths & params| DL
     CONFIG -.->|TEST_SIZE, RANDOM_STATE| PP
-    CONFIG -.->|MAX_ITER| MD
-    CONFIG -.->|THRESHOLDS| EV
+    CONFIG -.->|MAX_ITER, param grids| MD
+    CONFIG -.->|THRESHOLDS, CV_FOLDS| EV
 
     DL -->|DataFrame| PP
     PP -->|X_train, X_test, y_train, y_test| MD
-    MD -->|y_probs| EV
+    MD -->|models, y_probs, y_pred| EV
 ```
 
 | Module | Key Functions | Responsibility |
 |--------|---------------|----------------|
-| `config.py` | — | Paths, `RANDOM_STATE=42`, `TEST_SIZE=0.3`, `THRESHOLDS`, `MAX_ITER` |
+| `config.py` | — | Paths, split params, thresholds, GridSearchCV grids |
 | `data_loader.py` | `load_credit_data()` | Load CSV from `data/Credit.csv` |
 | `preprocessing.py` | `preprocess_data()`, `split_credit_data()` | Target encoding, column order, train/test split |
-| `model.py` | `train_logistic_regression()`, `get_prediction_probabilities()` | Fit LR model, return P(Good) |
-| `evaluation.py` | `calculate_metrics()`, `print_performance_summary()` | Threshold-based metrics and reporting |
-| `main.py` | `run_pipeline()` | Wires all steps in sequence |
+| `model.py` | `train_*()`, `get_all_trainers()`, `get_prediction_probabilities()` | Train all models; tune tree ensembles via GridSearchCV |
+| `evaluation.py` | `calculate_metrics()`, `calculate_predict_metrics()`, `print_model_comparison()` | Threshold and hard-prediction metrics, comparison table |
+| `main.py` | `run_pipeline()` | Orchestrates load → preprocess → train → evaluate |
 
 ---
 
-## Threshold Evaluation Logic
+## Models
+
+| Model | Training | Threshold tuning |
+|-------|----------|------------------|
+| **Logistic Regression** | Direct fit (`max_iter=1e8`) | Yes — evaluated at 0.2, 0.35, 0.5 |
+| **Decision Tree** | GridSearchCV on `max_depth` | No — uses `predict()` |
+| **Bagging** | GridSearchCV on `n_estimators`, `max_features` | No |
+| **Random Forest** | GridSearchCV on `n_estimators`, `max_features` | No |
+| **SVM (RBF)** | Direct fit (`probability=True`) | No |
+
+### GridSearchCV configuration
+
+Defined in `config.py`:
+
+| Model | Parameter grid |
+|-------|----------------|
+| Decision Tree | `max_depth`: [3, 4, 5, 6, 7, 8, 10, 20] |
+| Bagging | `n_estimators`: [100, 150, 200], `max_features`: [0.5, 0.7, 1.0] |
+| Random Forest | `n_estimators`: [100, 150, 200], `max_features`: [0.5, 0.7, 1.0] |
+
+All grid searches use **5-fold cross-validation** with **accuracy** as the scoring metric. The pipeline prints the best parameters and CV score, then retrains using `best_estimator_`.
+
+---
+
+## Threshold Evaluation Logic (Logistic Regression)
 
 ```mermaid
 flowchart TD
@@ -153,9 +190,12 @@ flowchart TD
     GOOD --> CM[Confusion Matrix]
     BAD --> CM
 
-    CM --> TPR["TPR = TP / (TP + FN)<br/>% of Good correctly approved"]
-    CM --> FPR["FPR = FP / (FP + TN)<br/>% of Bad wrongly approved"]
-    CM --> ACC["Accuracy = (TP + TN) / Total"]
+    CM --> ACC["Accuracy"]
+    CM --> PREC["Precision"]
+    CM --> REC["Recall / TPR"]
+    CM --> FPR["FPR"]
+    CM --> FNR["FNR"]
+    PROB --> AUC["AUC (threshold-independent)"]
 ```
 
 | Threshold | Trade-off |
@@ -172,14 +212,18 @@ flowchart TD
 credit_risk_assessment/
 ├── data/Credit.csv              # Dataset
 ├── src/
-│   ├── config.py                # Configuration
+│   ├── config.py                # Paths, thresholds, GridSearchCV grids
 │   ├── data_loader.py           # Step 1: Load
-│   ├── preprocessing.py         # Step 2–3: Preprocess & Split
-│   ├── model.py                 # Step 4–5: Train & Predict
-│   ├── evaluation.py            # Step 6: Evaluate
+│   ├── preprocessing.py         # Step 2–3: Preprocess & split
+│   ├── model.py                 # Step 4: Train & tune models
+│   ├── evaluation.py            # Step 5: Metrics & comparison
 │   └── main.py                  # Pipeline entry point
-├── tests/                       # Unit tests (loader, preprocessing)
-├── Credit-risk-assessment-in-banking-1.ipynb   # EDA & model experiments
+├── tests/
+│   ├── test_data_loader.py
+│   ├── test_preprocessing.py
+│   ├── test_evaluation.py
+│   └── test_model_tuning.py
+├── Credit-risk-assessment-in-banking-1.ipynb   # EDA, plots, KNN experiments
 ├── pyproject.toml               # Dependencies (uv)
 └── architecture.md              # This file
 ```
@@ -192,3 +236,9 @@ credit_risk_assessment/
 uv run python -m src.main
 uv run python -m pytest tests/
 ```
+
+The pipeline prints:
+1. Logistic regression metrics at each threshold (0.2, 0.35, 0.5)
+2. GridSearchCV best params for Decision Tree, Bagging, and Random Forest
+3. Test-set metrics for all non-LR models
+4. A side-by-side model comparison table
